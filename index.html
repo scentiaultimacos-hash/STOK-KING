@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Sistem Laporan Stok</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:#f0f4f8;color:#2c3e50;min-height:100vh}
+#loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,#4472C4 0%,#7030A0 100%);display:flex;justify-content:center;align-items:center;padding:20px;z-index:2000}
+.login-card{background:#fff;border-radius:16px;padding:40px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .4s ease}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.login-logo{text-align:center;font-size:48px;margin-bottom:10px}
+.login-title{text-align:center;font-size:22px;font-weight:700;margin-bottom:5px}
+.login-sub{text-align:center;font-size:13px;color:#7a8899;margin-bottom:30px}
+.form-group{margin-bottom:15px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:#4a5666;margin-bottom:6px}
+.form-group label .req{color:#dc3545}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid #d0d7e2;border-radius:8px;font-size:14px;outline:none;font-family:inherit;transition:.2s;background:#fff}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#4472C4;box-shadow:0 0 0 3px rgba(68,114,196,.15)}
+.form-group input[readonly]{background:#f5f8fc;color:#4a5666;cursor:not-allowed}
+.form-hint{font-size:11px;color:#7a8899;margin-top:4px;line-height:1.5}
+.login-form input{width:100%;padding:12px 15px;border:1px solid #d0d7e2;border-radius:10px;font-size:14px;outline:none;transition:.2s}
+.login-form input:focus{border-color:#4472C4;box-shadow:0 0 0 3px rgba(68,114,196,.15)}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#4472C4,#7030A0);color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;transition:.2s}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(68,114,196,.4)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-hint{text-align:center;font-size:12px;color:#9aa5b1;margin-top:20px;padding-top:15px;border-top:1px solid #eef2f7;line-height:1.8}
+.login-hint code{background:#f5f8fc;padding:2px 6px;border-radius:4px;color:#4472C4;font-size:11px}
+.header{background:linear-gradient(135deg,#4472C4,#7030A0);color:#fff;padding:15px 25px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.header h1{font-size:20px}
+.header .badge{font-size:11px;background:rgba(255,255,255,.2);padding:3px 10px;border-radius:12px;margin-left:8px;font-weight:500}
+#onlineStatus{background:rgba(40,167,69,.5)}
+.header-right{display:flex;gap:8px;align-items:center}
+.user-chip{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.15);padding:6px 14px 6px 6px;border-radius:30px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:#4472C4;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.user-chip .info{line-height:1.2}
+.user-chip .name{font-size:13px;font-weight:600}
+.user-chip .role{font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
+.logout-btn{background:rgba(255,255,255,.2);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s}
+.logout-btn:hover{background:rgba(220,53,69,.8)}
+.tabs{background:#fff;display:flex;border-bottom:2px solid #e0e6ed;overflow-x:auto;position:sticky;top:0;z-index:50}
+.tab{padding:14px 22px;cursor:pointer;border:none;background:none;font-size:14px;font-weight:600;color:#7a8899;transition:.2s;border-bottom:3px solid transparent;white-space:nowrap}
+.tab:hover{background:#f5f8fc;color:#4472C4}
+.tab.active{color:#4472C4;border-bottom-color:#4472C4;background:#f5f8fc}
+.container{padding:25px;max-width:1400px;margin:0 auto}
+.page{display:none}.page.active{display:block;animation:fade .3s}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
+.card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:5px solid #4472C4}
+.card.green{border-left-color:#28a745}.card.red{border-left-color:#dc3545}
+.card.yellow{border-left-color:#ffc107}.card.purple{border-left-color:#7030A0}
+.card .label{font-size:12px;color:#7a8899;text-transform:uppercase;letter-spacing:.5px}
+.card .value{font-size:26px;font-weight:700;margin-top:5px}
+.toolbar{background:#fff;padding:15px;border-radius:12px 12px 0 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #e0e6ed}
+.toolbar input[type="text"],.toolbar select{padding:9px 12px;border:1px solid #d0d7e2;border-radius:8px;font-size:14px;outline:none;background:#fff}
+.toolbar input[type="text"]{flex:1;min-width:200px}
+.toolbar input:focus,.toolbar select:focus{border-color:#4472C4}
+.btn{padding:9px 16px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#4472C4;color:#fff}.btn-primary:hover{background:#355da0}
+.btn-success{background:#28a745;color:#fff}.btn-success:hover{background:#1e7e34}
+.btn-danger{background:#dc3545;color:#fff}.btn-danger:hover{background:#b02a37}
+.btn-warning{background:#ffc107;color:#2c3e50}.btn-warning:hover{background:#e0a800}
+.btn-secondary{background:#eef2f7;color:#4a5666}.btn-secondary:hover{background:#dde4ec}
+.btn-sm{padding:6px 10px;font-size:12px}
+.btn-icon{padding:6px 9px;font-size:14px;line-height:1}
+.table-wrap{background:#fff;border-radius:0 0 12px 12px;overflow-x:auto;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f5f8fc;padding:12px;text-align:left;font-weight:600;color:#4a5666;border-bottom:2px solid #e0e6ed;font-size:12px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+tr:hover td{background:#fafbfd}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{text-align:center;padding:50px;color:#9aa5b1}
+.empty .icon{font-size:40px;margin-bottom:10px;display:block;opacity:.5}
+.badge-status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-aman{background:#d4edda;color:#155724}
+.badge-reorder{background:#fff3cd;color:#856404}
+.badge-habis{background:#f8d7da;color:#721c24}
+.role-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.role-admin{background:#7030A0;color:#fff}
+.role-user{background:#4472C4;color:#fff}
+.role-viewer{background:#6c757d;color:#fff}
+.role-me{background:#28a745;color:#fff}
+.kategori-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;justify-content:center;align-items:center;z-index:1000;padding:20px}
+.modal-bg.show{display:flex;animation:fade .2s}
+.modal{background:#fff;border-radius:14px;padding:25px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;animation:pop .3s ease}
+.modal h3{margin-bottom:20px;color:#2c3e50;font-size:18px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.role-desc{background:#f5f8fc;border-radius:8px;padding:10px;font-size:12px;color:#4a5666;margin-top:8px;line-height:1.6}
+.kat-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eef2f7}
+.kat-row:last-child{border-bottom:none}
+.kat-input-row{display:flex;gap:8px;margin-bottom:15px}
+.kat-input-row input{flex:1;padding:10px;border:1px solid #d0d7e2;border-radius:8px;outline:none;font-size:14px}
+.kat-input-row input:focus{border-color:#4472C4}
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.9);display:none;justify-content:center;align-items:center;z-index:3000;flex-direction:column;gap:15px;font-size:16px;font-weight:600;color:#4472C4}
+.loading.show{display:flex}
+.spinner{width:45px;height:45px;border:4px solid #eef2f7;border-top-color:#4472C4;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:20px;right:20px;background:#2c3e50;color:#fff;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:4000;opacity:0;transition:.3s;pointer-events:none;max-width:350px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:#28a745}.toast.error{background:#dc3545}.toast.info{background:#4472C4}
+.log-item{background:#fff;border-radius:10px;padding:15px 18px;margin-bottom:10px;display:flex;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);transition:.2s}
+.log-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.log-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:#eef2f7}
+.log-icon.tambah{background:#d4edda}.log-icon.edit{background:#fff3cd}.log-icon.hapus{background:#f8d7da}
+.log-icon.login{background:#cce5ff}.log-icon.logout{background:#e2d6f5}
+.log-body{flex:1;min-width:0}
+.log-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.log-meta{font-size:12px;color:#7a8899}
+.log-time{font-size:11px;color:#9aa5b1;margin-top:3px}
+#fatalError{position:fixed;inset:0;background:#f0f4f8;display:none;justify-content:center;align-items:center;padding:20px;z-index:9999}
+@media print{.header,.tabs,.toolbar,.btn,.modal-bg,.user-chip,.logout-btn{display:none!important}.container{padding:0}.table-wrap{box-shadow:none}body{background:#fff}}
+@media(max-width:600px){.header{padding:12px}.header h1{font-size:16px}.container{padding:12px}.tab{padding:12px 14px;font-size:12px}.card .value{font-size:20px}.user-chip .info{display:none}.log-time{display:none}}
+</style>
+</head>
+<body>
+
+<div id="fatalError">
+  <div style="background:#fff;border-radius:16px;padding:40px;max-width:500px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+    <div style="font-size:64px;margin-bottom:15px">⚠️</div>
+    <h2 style="color:#2c3e50;margin-bottom:10px">Gagal terhubung ke database</h2>
+    <p id="fatalMsg" style="color:#666;margin-bottom:20px;line-height:1.6"></p>
+    <button onclick="location.reload()" style="padding:12px 24px;background:#4472C4;color:#fff;border:0;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">🔄 Muat Ulang</button>
+    <p style="font-size:12px;color:#999;margin-top:20px;line-height:1.6">
+      Sudah reload tapi masih error?<br>
+      1. Matikan AdBlock sementara (blokir CDN)<br>
+      2. Cek koneksi internet<br>
+      3. Ctrl+Shift+R untuk hard refresh
+    </p>
+  </div>
+</div>
+
+<div class="loading" id="loading"><div class="spinner"></div><div>Memproses...</div></div>
+<div class="toast" id="toast"></div>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">📦</div>
+    <div class="login-title">Sistem Laporan Stok</div>
+    <div class="login-sub">Masuk untuk melanjutkan</div>
+    <form class="login-form" onsubmit="doLogin(event)">
+      <div class="form-group"><label>Username</label><input type="text" id="loginUser" placeholder="Masukkan username" autocomplete="username" required></div>
+      <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="Masukkan password" autocomplete="current-password" required></div>
+      <button type="submit" class="login-btn" id="loginBtn">🔓 Masuk</button>
+    </form>
+    <div class="login-hint">
+      🔑 Demo login:<br>
+      <code>admin</code> / <code>admin123</code> — Admin<br>
+      <code>king</code> / <code>1111</code> — User<br>
+      <code>viewer</code> / <code>1111</code> — Viewer
+    </div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none">
+  <div class="header">
+    <h1>📦 Sistem Laporan Stok <span class="badge" id="onlineStatus">☁️ Connecting...</span></h1>
+    <div class="header-right">
+      <button class="btn btn-success btn-sm" onclick="exportExcel()">📥 Excel</button>
+      <button class="btn btn-warning btn-sm" onclick="window.print()">🖨️ Print</button>
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="info"><div class="name" id="userName">-</div><div class="role" id="userRole">-</div></div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">🚪 Keluar</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+    <button class="tab" onclick="showPage('master',this)">📋 Master Barang</button>
+    <button class="tab" onclick="showPage('masuk',this)">📥 Barang Masuk</button>
+    <button class="tab" onclick="showPage('keluar',this)">📤 Barang Keluar</button>
+    <button class="tab" onclick="showPage('laporan',this)">📈 Laporan</button>
+    <button class="tab" id="tabUser" style="display:none" onclick="showPage('user',this)">👥 Kelola User</button>
+    <button class="tab" id="tabLog" style="display:none" onclick="showPage('log',this)">📜 Log Aktivitas</button>
+  </div>
+
+  <div class="container">
+    <div id="dashboard" class="page active">
+      <div class="cards" id="dashCards"></div>
+      <h3 style="margin-bottom:15px">🔴 Barang Perlu Perhatian</h3>
+      <div class="table-wrap"><table id="dashTable"></table></div>
+    </div>
+
+    <div id="master" class="page">
+      <div class="toolbar">
+        <input type="text" id="searchMaster" placeholder="🔍 Cari kode atau nama barang..." oninput="renderMaster()">
+        <select id="filterKategoriMaster" onchange="renderMaster()"><option value="">Semua Kategori</option></select>
+        <button class="btn btn-secondary btn-sm" id="btnKelolaKat" style="display:none" onclick="openKategoriModal()">🏷️ Kelola Kategori</button>
+        <button class="btn btn-primary" id="btnTambahBarang" style="display:none" onclick="openModal('master')">➕ Tambah Barang</button>
+      </div>
+      <div class="table-wrap"><table id="masterTable"></table></div>
+    </div>
+
+    <div id="masuk" class="page">
+      <div class="toolbar">
+        <input type="text" id="searchMasuk" placeholder="🔍 Cari kode barang..." oninput="renderMasuk()">
+        <button class="btn btn-primary" id="btnTambahMasuk" style="display:none" onclick="openModal('masuk')">➕ Tambah Masuk</button>
+      </div>
+      <div class="table-wrap"><table id="masukTable"></table></div>
+    </div>
+
+    <div id="keluar" class="page">
+      <div class="toolbar">
+        <input type="text" id="searchKeluar" placeholder="🔍 Cari kode barang..." oninput="renderKeluar()">
+        <button class="btn btn-primary" id="btnTambahKeluar" style="display:none" onclick="openModal('keluar')">➕ Tambah Keluar</button>
+      </div>
+      <div class="table-wrap"><table id="keluarTable"></table></div>
+    </div>
+
+    <div id="laporan" class="page">
+      <div class="cards" id="lapCards"></div>
+      <div class="toolbar">
+        <input type="text" id="searchLaporan" placeholder="🔍 Cari barang..." oninput="renderLaporan()">
+        <select id="filterKategoriLap" onchange="renderLaporan()"><option value="">Semua Kategori</option></select>
+        <select id="filterStatus" onchange="renderLaporan()">
+          <option value="">Semua Status</option>
+          <option value="AMAN">✅ AMAN</option>
+          <option value="REORDER">⚠️ REORDER</option>
+          <option value="HABIS">❌ HABIS</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table id="laporanTable"></table></div>
+    </div>
+
+    <div id="user" class="page">
+      <div class="cards" id="userCards"></div>
+      <div class="toolbar">
+        <input type="text" id="searchUser" placeholder="🔍 Cari username atau nama..." oninput="renderUsers()">
+        <button class="btn btn-primary" onclick="openUserModal()">➕ Tambah User</button>
+      </div>
+      <div class="table-wrap"><table id="userTable"></table></div>
+    </div>
+
+    <div id="log" class="page">
+      <div class="toolbar">
+        <input type="text" id="searchLog" placeholder="🔍 Cari user, aksi, atau keterangan..." oninput="renderLog()">
+        <select id="filterAksi" onchange="renderLog()">
+          <option value="">Semua Aksi</option>
+          <option value="login">Login</option>
+          <option value="logout">Logout</option>
+          <option value="tambah">Tambah</option>
+          <option value="edit">Edit</option>
+          <option value="hapus">Hapus</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadLog()">🔄 Refresh</button>
+      </div>
+      <div id="logList" style="margin-top:15px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ============ SUPABASE INIT (FIXED) ============
+var SUPABASE_URL = 'https://tvkrhxebhjacwojdwbjh.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2a3JoeGViaGphY3dvamR3YmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNjE3NzEsImV4cCI6MjEwOTkzNzc3MX0.CqdJQLzSn3iEBfT81V7vk5jM1-2Df3Ejr7B5o8JASHI';
+
+var sb = null;
+var initError = null;
+
+try {
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    throw new Error('Library Supabase gagal dimuat dari CDN. Kemungkinan AdBlock memblokir jsdelivr.net, atau koneksi internet bermasalah.');
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('✅ Supabase client siap');
+} catch (err) {
+  initError = err;
+  console.error('❌ Init error:', err);
+  document.getElementById('fatalMsg').textContent = err.message;
+  document.getElementById('fatalError').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'none';
+}
+
+// ============ STATE ============
+var state = { master: [], transaksi: [], log: [], users: [], kategori: [] };
+var currentUser = null;
+var reloading = false;
+
+var fmt = function(n) { return 'Rp ' + (n || 0).toLocaleString('id-ID'); };
+var fmtN = function(n) { return (n || 0).toLocaleString('id-ID'); };
+var fmtTgl = function(t) {
+  if (!t) return '-';
+  var d = new Date(t);
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+};
+var fmtWaktu = function(t) {
+  if (!t) return '-';
+  var d = new Date(t);
+  return fmtTgl(t) + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+};
+var initials = function(s) { return (s || '?').substring(0,2).toUpperCase(); };
+
+function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+function canEdit() { return currentUser && (currentUser.role === 'admin' || currentUser.role === 'user'); }
+
+function katStyle(nama) {
+  if (!nama) nama = 'Lainnya';
+  var idx = -1;
+  for (var i = 0; i < state.kategori.length; i++) {
+    if (state.kategori[i].nama === nama) { idx = i; break; }
+  }
+  var j = idx >= 0 ? idx : 0;
+  var hue = (j * 47) % 360;
+  return 'background:hsl(' + hue + ',70%,90%);color:hsl(' + hue + ',70%,28%)';
+}
+function katBadge(nama) {
+  if (!nama) return '<span class="kategori-badge" style="background:#f5f5f5;color:#7a8899">-</span>';
+  return '<span class="kategori-badge" style="' + katStyle(nama) + '">' + nama + '</span>';
+}
+
+function toast(msg, type) {
+  type = type || 'success';
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function(){ el.className = 'toast'; }, 3500);
+}
+function setLoading(show) { document.getElementById('loading').classList.toggle('show', show); }
+function setOnline(ok) {
+  var el = document.getElementById('onlineStatus');
+  el.textContent = ok ? '☁️ Online' : '❌ Offline';
+  el.style.background = ok ? 'rgba(40,167,69,.5)' : 'rgba(220,53,69,.5)';
+}
+
+function getBarang(kode) {
+  for (var i = 0; i < state.master.length; i++) {
+    if (state.master[i].kode === kode) return state.master[i];
+  }
+  return { nama:'(tidak ditemukan)', satuan:'-', harga:0, min_stok:0, stok_awal:0, kategori:'-' };
+}
+
+function hitungStok(kode) {
+  var b = null;
+  for (var i = 0; i < state.master.length; i++) {
+    if (state.master[i].kode === kode) { b = state.master[i]; break; }
+  }
+  if (!b) return null;
+  var masuk = 0, keluar = 0;
+  for (var j = 0; j < state.transaksi.length; j++) {
+    var t = state.transaksi[j];
+    if (t.kode === kode) {
+      if (t.tipe === 'masuk') masuk += Number(t.jumlah);
+      else keluar += Number(t.jumlah);
+    }
+  }
+  var akhir = Number(b.stok_awal) + masuk - keluar;
+  var status = 'AMAN';
+  if (akhir <= 0) status = 'HABIS';
+  else if (akhir <= b.min_stok) status = 'REORDER';
+  return { masuk: masuk, keluar: keluar, akhir: akhir, status: status, nilai: akhir * b.harga };
+}
+
+async function logActivity(aksi, tabel, kodeRef, keterangan) {
+  if (!currentUser || !sb) return;
+  try {
+    await sb.from('log_activity').insert({
+      username: currentUser.username, role: currentUser.role,
+      aksi: aksi, tabel: tabel, kode_ref: kodeRef || '', keterangan: keterangan || ''
+    });
+  } catch(e) { console.error('Log gagal:', e); }
+}
+
+// ============ AUTH ============
+async function doLogin(e) {
+  e.preventDefault();
+  if (!sb) { toast('❌ Database belum siap', 'error'); return; }
+  var username = document.getElementById('loginUser').value.trim().toLowerCase();
+  var password = document.getElementById('loginPass').value;
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '⏳ Memeriksa...';
+  try {
+    var res = await sb.from('users').select('*').eq('username', username).eq('password', password).maybeSingle();
+    if (res.error) throw res.error;
+    if (!res.data) { toast('❌ Username atau password salah', 'error'); return; }
+    currentUser = { username: res.data.username, role: res.data.role, nama: res.data.nama_lengkap || res.data.username };
+    sessionStorage.setItem('stokUser', JSON.stringify(currentUser));
+    applyUserUI();
+    await logActivity('login', 'users', currentUser.username, 'Berhasil login');
+    await loadAll();
+    if (isAdmin()) await loadUsers();
+    toast('✅ Selamat datang, ' + currentUser.nama + '!', 'success');
+  } catch(err) { toast('❌ ' + err.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '🔓 Masuk'; }
+}
+
+function applyUserUI() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('userAvatar').textContent = initials(currentUser.nama);
+  document.getElementById('userName').textContent = currentUser.nama;
+  document.getElementById('userRole').innerHTML = '<span class="role-badge role-' + currentUser.role + '">' + currentUser.role + '</span>';
+  document.getElementById('tabUser').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('tabLog').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('btnTambahBarang').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('btnKelolaKat').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('btnTambahMasuk').style.display = canEdit() ? 'inline-flex' : 'none';
+  document.getElementById('btnTambahKeluar').style.display = canEdit() ? 'inline-flex' : 'none';
+}
+
+async function doLogout() {
+  if (!confirm('Yakin ingin keluar?')) return;
+  await logActivity('logout', 'users', currentUser.username, 'Logout dari sistem');
+  sessionStorage.removeItem('stokUser');
+  currentUser = null;
+  state = { master: [], transaksi: [], log: [], users: [], kategori: [] };
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+async function checkSession() {
+  if (!sb) return;
+  var saved = sessionStorage.getItem('stokUser');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      applyUserUI();
+      await loadAll();
+      if (isAdmin()) await loadUsers();
+    } catch(e) {
+      console.error('Session restore gagal:', e);
+      sessionStorage.removeItem('stokUser');
+    }
+  }
+}
+
+// ============ DATA LOADING ============
+async function loadAll() {
+  if (!currentUser || reloading || !sb) return;
+  reloading = true;
+  setLoading(true);
+  try {
+    var results = await Promise.all([
+      sb.from('barang').select('*').order('kode'),
+      sb.from('transaksi').select('*').order('tanggal', {ascending: false}).order('created_at', {ascending: false}),
+      sb.from('kategori').select('*').order('nama')
+    ]);
+    if (results[0].error) throw results[0].error;
+    if (results[1].error) throw results[1].error;
+    if (results[2].error) throw results[2].error;
+    state.master = results[0].data || [];
+    state.transaksi = results[1].data || [];
+    state.kategori = results[2].data || [];
+    updateKategoriFilters();
+    renderAll();
+    setOnline(true);
+  } catch(e) {
+    setOnline(false);
+    toast('❌ ' + e.message, 'error');
+  } finally { reloading = false; setLoading(false); }
+}
+
+function updateKategoriFilters() {
+  var opts = '<option value="">Semua Kategori</option>';
+  for (var i = 0; i < state.kategori.length; i++) {
+    opts += '<option value="' + state.kategori[i].nama + '">' + state.kategori[i].nama + '</option>';
+  }
+  var elM = document.getElementById('filterKategoriMaster');
+  var elL = document.getElementById('filterKategoriLap');
+  if (elM) elM.innerHTML = opts;
+  if (elL) elL.innerHTML = opts;
+}
+
+async function loadUsers() {
+  if (!isAdmin() || !sb) return;
+  try {
+    var res = await sb.from('users').select('*').order('role').order('username');
+    if (res.error) throw res.error;
+    state.users = res.data || [];
+    renderUsers();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function loadLog() {
+  if (!isAdmin() || !sb) return;
+  setLoading(true);
+  try {
+    var res = await sb.from('log_activity').select('*').order('waktu', {ascending: false}).limit(500);
+    if (res.error) throw res.error;
+    state.log = res.data || [];
+    renderLog();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+async function generateKodeBarang() {
+  var mm = String(new Date().getMonth() + 1).padStart(2, '0');
+  var prefix = 'BRG-' + mm + '-';
+  var res = await sb.from('barang').select('kode').like('kode', prefix + '%');
+  if (res.error) throw res.error;
+  var nums = (res.data || []).map(function(b) { return parseInt((b.kode || '').split('-')[2]) || 0; });
+  var next = nums.length ? Math.max.apply(null, nums) + 1 : 1;
+  return prefix + String(next).padStart(3, '0');
+}
+
+// ============ RENDER ============
+function renderAll() { renderDashboard(); renderMaster(); renderMasuk(); renderKeluar(); renderLaporan(); }
+
+function renderDashboard() {
+  var totalBarang = state.master.length;
+  var totalMasuk = 0, totalKeluar = 0;
+  for (var i = 0; i < state.transaksi.length; i++) {
+    var t = state.transaksi[i];
+    if (t.tipe === 'masuk') totalMasuk += Number(t.jumlah);
+    else totalKeluar += Number(t.jumlah);
+  }
+  var totalNilai = 0;
+  for (var j = 0; j < state.master.length; j++) {
+    var h = hitungStok(state.master[j].kode);
+    if (h) totalNilai += h.nilai;
+  }
+  document.getElementById('dashCards').innerHTML =
+    '<div class="card"><div class="label">Total Barang</div><div class="value">' + totalBarang + '</div></div>' +
+    '<div class="card green"><div class="label">Total Masuk</div><div class="value">' + fmtN(totalMasuk) + '</div></div>' +
+    '<div class="card red"><div class="label">Total Keluar</div><div class="value">' + fmtN(totalKeluar) + '</div></div>' +
+    '<div class="card purple"><div class="label">Nilai Stok</div><div class="value" style="font-size:18px">' + fmt(totalNilai) + '</div></div>';
+
+  var perlu = [];
+  for (var k = 0; k < state.master.length; k++) {
+    var b = state.master[k];
+    var hs = hitungStok(b.kode);
+    if (hs && hs.status !== 'AMAN') {
+      perlu.push({ kode: b.kode, nama: b.nama, satuan: b.satuan, kategori: b.kategori, min_stok: b.min_stok, akhir: hs.akhir, status: hs.status });
+    }
+  }
+
+  var tbl = document.getElementById('dashTable');
+  if (!perlu.length) {
+    tbl.innerHTML = '<tr><td class="empty"><span class="icon">✨</span>Semua stok dalam kondisi aman</td></tr>';
+    return;
+  }
+  var html = '<thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th class="num">Stok</th><th class="num">Min</th><th>Status</th></tr></thead><tbody>';
+  for (var m = 0; m < perlu.length; m++) {
+    var x = perlu[m];
+    html += '<tr><td><b>' + x.kode + '</b></td><td>' + x.nama + '</td>' +
+      '<td>' + katBadge(x.kategori) + '</td>' +
+      '<td class="num">' + x.akhir + ' ' + x.satuan + '</td><td class="num">' + x.min_stok + '</td>' +
+      '<td><span class="badge-status badge-' + x.status.toLowerCase() + '">' + x.status + '</span></td></tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function renderMaster() {
+  var q = (document.getElementById('searchMaster').value || '').toLowerCase();
+  var fk = document.getElementById('filterKategoriMaster').value;
+  var data = [];
+  for (var i = 0; i < state.master.length; i++) {
+    var b = state.master[i];
+    if (b.kode.toLowerCase().indexOf(q) < 0 && b.nama.toLowerCase().indexOf(q) < 0) continue;
+    if (fk && (b.kategori || 'Lainnya') !== fk) continue;
+    data.push(b);
+  }
+  var admin = isAdmin();
+  var t = document.getElementById('masterTable');
+  var html = '<thead><tr><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th>Satuan</th><th class="num">Stok Awal</th><th class="num">Harga</th><th class="num">Min</th><th>Dibuat</th>' + (admin ? '<th>Aksi</th>' : '') + '</tr></thead><tbody>';
+  if (data.length) {
+    for (var j = 0; j < data.length; j++) {
+      var x = data[j];
+      html += '<tr><td><b>' + x.kode + '</b></td><td>' + x.nama + '</td>' +
+        '<td>' + katBadge(x.kategori) + '</td><td>' + x.satuan + '</td>' +
+        '<td class="num">' + x.stok_awal + '</td><td class="num">' + fmt(x.harga) + '</td><td class="num">' + x.min_stok + '</td>' +
+        '<td style="font-size:12px;color:#7a8899">' + (x.created_by || '-') + '</td>';
+      if (admin) {
+        html += '<td><button class="btn btn-warning btn-icon" title="Edit" onclick="editMaster(\'' + x.kode + '\')">✏️</button>' +
+          '<button class="btn btn-danger btn-icon" title="Hapus" onclick="hapusMaster(\'' + x.kode + '\')">🗑️</button></td>';
+      }
+      html += '</tr>';
+    }
+  } else {
+    html += '<tr><td colspan="' + (admin ? 9 : 8) + '" class="empty"><span class="icon">📭</span>Belum ada data barang</td></tr>';
+  }
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+function renderMasuk() {
+  var q = (document.getElementById('searchMasuk').value || '').toLowerCase();
+  var data = [];
+  for (var i = 0; i < state.transaksi.length; i++) {
+    var t = state.transaksi[i];
+    if (t.tipe === 'masuk' && t.kode.toLowerCase().indexOf(q) >= 0) data.push(t);
+  }
+  var canEd = canEdit();
+  var tbl = document.getElementById('masukTable');
+  var html = '<thead><tr><th>Tanggal</th><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th class="num">Jumlah</th><th class="num">Harga</th><th class="num">Total</th><th>Oleh</th>' + (canEd ? '<th>Aksi</th>' : '') + '</tr></thead><tbody>';
+  if (data.length) {
+    for (var j = 0; j < data.length; j++) {
+      var x = data[j];
+      var b = getBarang(x.kode);
+      html += '<tr><td>' + fmtTgl(x.tanggal) + '</td><td><b>' + x.kode + '</b></td><td>' + b.nama + '</td>' +
+        '<td>' + katBadge(b.kategori) + '</td>' +
+        '<td class="num">' + x.jumlah + '</td><td class="num">' + fmt(x.harga) + '</td>' +
+        '<td class="num"><b>' + fmt(x.jumlah * x.harga) + '</b></td>' +
+        '<td style="font-size:12px;color:#7a8899">' + (x.created_by || '-') + '</td>';
+      if (canEd) {
+        html += '<td><button class="btn btn-warning btn-icon" title="Edit" onclick="editTransaksi(\'' + x.id + '\')">✏️</button>' +
+          '<button class="btn btn-danger btn-icon" title="Hapus" onclick="hapusTransaksi(\'' + x.id + '\')">🗑️</button></td>';
+      }
+      html += '</tr>';
+    }
+  } else {
+    html += '<tr><td colspan="' + (canEd ? 9 : 8) + '" class="empty"><span class="icon">📭</span>Belum ada transaksi masuk</td></tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function renderKeluar() {
+  var q = (document.getElementById('searchKeluar').value || '').toLowerCase();
+  var data = [];
+  for (var i = 0; i < state.transaksi.length; i++) {
+    var t = state.transaksi[i];
+    if (t.tipe === 'keluar' && t.kode.toLowerCase().indexOf(q) >= 0) data.push(t);
+  }
+  var canEd = canEdit();
+  var tbl = document.getElementById('keluarTable');
+  var html = '<thead><tr><th>Tanggal</th><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th class="num">Jumlah</th><th>Keterangan</th><th>Oleh</th>' + (canEd ? '<th>Aksi</th>' : '') + '</tr></thead><tbody>';
+  if (data.length) {
+    for (var j = 0; j < data.length; j++) {
+      var x = data[j];
+      var b = getBarang(x.kode);
+      html += '<tr><td>' + fmtTgl(x.tanggal) + '</td><td><b>' + x.kode + '</b></td><td>' + b.nama + '</td>' +
+        '<td>' + katBadge(b.kategori) + '</td>' +
+        '<td class="num">' + x.jumlah + '</td><td>' + (x.keterangan || '-') + '</td>' +
+        '<td style="font-size:12px;color:#7a8899">' + (x.created_by || '-') + '</td>';
+      if (canEd) {
+        html += '<td><button class="btn btn-warning btn-icon" title="Edit" onclick="editTransaksi(\'' + x.id + '\')">✏️</button>' +
+          '<button class="btn btn-danger btn-icon" title="Hapus" onclick="hapusTransaksi(\'' + x.id + '\')">🗑️</button></td>';
+      }
+      html += '</tr>';
+    }
+  } else {
+    html += '<tr><td colspan="' + (canEd ? 8 : 7) + '" class="empty"><span class="icon">📭</span>Belum ada transaksi keluar</td></tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function renderLaporan() {
+  var q = (document.getElementById('searchLaporan').value || '').toLowerCase();
+  var fs = document.getElementById('filterStatus').value;
+  var fk = document.getElementById('filterKategoriLap').value;
+  var data = [];
+  for (var i = 0; i < state.master.length; i++) {
+    var b = state.master[i];
+    var hs = hitungStok(b.kode);
+    if (!hs) continue;
+    if (b.kode.toLowerCase().indexOf(q) < 0 && b.nama.toLowerCase().indexOf(q) < 0) continue;
+    if (fs && hs.status !== fs) continue;
+    if (fk && (b.kategori || 'Lainnya') !== fk) continue;
+    data.push({ kode: b.kode, nama: b.nama, satuan: b.satuan, kategori: b.kategori, stok_awal: b.stok_awal, masuk: hs.masuk, keluar: hs.keluar, akhir: hs.akhir, status: hs.status, nilai: hs.nilai });
+  }
+  var totalNilai = 0, totalAkhir = 0;
+  for (var j = 0; j < data.length; j++) { totalNilai += data[j].nilai; totalAkhir += data[j].akhir; }
+  document.getElementById('lapCards').innerHTML =
+    '<div class="card"><div class="label">Jumlah Barang</div><div class="value">' + data.length + '</div></div>' +
+    '<div class="card green"><div class="label">Total Stok Akhir</div><div class="value">' + fmtN(totalAkhir) + '</div></div>' +
+    '<div class="card purple"><div class="label">Nilai Stok</div><div class="value" style="font-size:18px">' + fmt(totalNilai) + '</div></div>';
+
+  var tbl = document.getElementById('laporanTable');
+  var html = '<thead><tr><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th>Satuan</th><th class="num">Stok Awal</th><th class="num">Masuk</th><th class="num">Keluar</th><th class="num">Stok Akhir</th><th>Status</th><th class="num">Nilai Stok</th></tr></thead><tbody>';
+  if (data.length) {
+    for (var k = 0; k < data.length; k++) {
+      var x = data[k];
+      html += '<tr><td><b>' + x.kode + '</b></td><td>' + x.nama + '</td>' +
+        '<td>' + katBadge(x.kategori) + '</td><td>' + x.satuan + '</td>' +
+        '<td class="num">' + x.stok_awal + '</td>' +
+        '<td class="num" style="color:#28a745">+' + x.masuk + '</td>' +
+        '<td class="num" style="color:#dc3545">-' + x.keluar + '</td>' +
+        '<td class="num"><b>' + x.akhir + '</b></td>' +
+        '<td><span class="badge-status badge-' + x.status.toLowerCase() + '">' + x.status + '</span></td>' +
+        '<td class="num"><b>' + fmt(x.nilai) + '</b></td></tr>';
+    }
+  } else {
+    html += '<tr><td colspan="10" class="empty"><span class="icon">📭</span>Tidak ada data</td></tr>';
+  }
+  html += '</tbody><tfoot><tr style="background:#f5f8fc;font-weight:700"><td colspan="9" style="text-align:right;padding:15px">TOTAL NILAI STOK:</td><td class="num" style="padding:15px;color:#7030A0;font-size:16px">' + fmt(totalNilai) + '</td></tr></tfoot>';
+  tbl.innerHTML = html;
+}
+
+function renderUsers() {
+  var q = (document.getElementById('searchUser').value || '').toLowerCase();
+  var data = [];
+  var adminCount = 0, tA = 0, tU = 0, tV = 0;
+  for (var i = 0; i < state.users.length; i++) {
+    var u = state.users[i];
+    if (u.role === 'admin') { adminCount++; tA++; }
+    else if (u.role === 'user') tU++;
+    else if (u.role === 'viewer') tV++;
+    if (u.username.toLowerCase().indexOf(q) < 0 && (u.nama_lengkap || '').toLowerCase().indexOf(q) < 0) continue;
+    data.push(u);
+  }
+  document.getElementById('userCards').innerHTML =
+    '<div class="card purple"><div class="label">👑 Admin</div><div class="value">' + tA + '</div></div>' +
+    '<div class="card"><div class="label">👤 User</div><div class="value">' + tU + '</div></div>' +
+    '<div class="card yellow"><div class="label">👁️ Viewer</div><div class="value">' + tV + '</div></div>' +
+    '<div class="card green"><div class="label">Total User</div><div class="value">' + state.users.length + '</div></div>';
+
+  var t = document.getElementById('userTable');
+  var html = '<thead><tr><th>Username</th><th>Nama Lengkap</th><th>Role</th><th>Dibuat</th><th>Aksi</th></tr></thead><tbody>';
+  if (data.length) {
+    for (var j = 0; j < data.length; j++) {
+      var x = data[j];
+      var isMe = x.username === currentUser.username;
+      var lastAdmin = x.role === 'admin' && adminCount === 1;
+      var canDel = !isMe && !lastAdmin;
+      html += '<tr><td><b>' + x.username + '</b> ' + (isMe ? '<span class="role-badge role-me">ANDA</span>' : '') + '</td>' +
+        '<td>' + (x.nama_lengkap || '-') + '</td>' +
+        '<td><span class="role-badge role-' + x.role + '">' + x.role + '</span></td>' +
+        '<td style="font-size:12px;color:#7a8899">' + fmtTgl(x.created_at) + '</td>' +
+        '<td><button class="btn btn-warning btn-icon" title="Edit" onclick="openUserModal(\'' + x.username + '\')">✏️</button>';
+      if (canDel) {
+        html += '<button class="btn btn-danger btn-icon" title="Hapus" onclick="deleteUser(\'' + x.username + '\')">🗑️</button>';
+      } else {
+        html += '<button class="btn btn-secondary btn-icon" disabled style="opacity:.4">🗑️</button>';
+      }
+      html += '</td></tr>';
+    }
+  } else {
+    html += '<tr><td colspan="5" class="empty"><span class="icon">📭</span>Tidak ada user</td></tr>';
+  }
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+function renderLog() {
+  var q = (document.getElementById('searchLog').value || '').toLowerCase();
+  var fa = document.getElementById('filterAksi').value;
+  var data = [];
+  for (var i = 0; i < state.log.length; i++) {
+    var l = state.log[i];
+    var mQ = !q || (l.username || '').toLowerCase().indexOf(q) >= 0 || (l.keterangan || '').toLowerCase().indexOf(q) >= 0 || (l.kode_ref || '').toLowerCase().indexOf(q) >= 0;
+    var mA = !fa || l.aksi === fa;
+    if (mQ && mA) data.push(l);
+  }
+  var el = document.getElementById('logList');
+  if (!data.length) {
+    el.innerHTML = '<div class="empty"><span class="icon">📜</span>Belum ada aktivitas</div>';
+    return;
+  }
+  var iconMap = { login:'🔓', logout:'🚪', tambah:'➕', edit:'✏️', hapus:'🗑️', init:'⚙️' };
+  var html = '';
+  for (var j = 0; j < data.length; j++) {
+    var x = data[j];
+    var icon = iconMap[x.aksi] || '📌';
+    var cls = (['login','logout','tambah','edit','hapus'].indexOf(x.aksi) >= 0) ? x.aksi : '';
+    html += '<div class="log-item">' +
+      '<div class="log-icon ' + cls + '">' + icon + '</div>' +
+      '<div class="log-body">' +
+        '<div class="log-title"><b>' + x.username + '</b> <span class="role-badge role-' + x.role + '">' + x.role + '</span> — <span style="text-transform:capitalize">' + x.aksi + '</span> ' + (x.tabel ? '<span style="color:#7a8899">[' + x.tabel + ']</span>' : '') + '</div>' +
+        '<div class="log-meta">' + (x.keterangan || '-') + ' ' + (x.kode_ref ? '<b>(' + x.kode_ref + ')</b>' : '') + '</div>' +
+        '<div class="log-time">🕒 ' + fmtWaktu(x.waktu) + '</div>' +
+      '</div></div>';
+  }
+  el.innerHTML = html;
+}
+
+function showPage(id, el) {
+  var pages = document.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+  var tabs = document.querySelectorAll('.tab');
+  for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'user') loadUsers();
+  if (id === 'log') loadLog();
+}
+
+// ============ MODAL BARANG ============
+async function openModal(type, id) {
+  var bg = document.getElementById('modalBg');
+  var mc = document.getElementById('modalContent');
+
+  if (type === 'master') {
+    if (!isAdmin()) { toast('⛔ Hanya admin', 'error'); return; }
+    var b = null;
+    if (id) {
+      for (var i = 0; i < state.master.length; i++) {
+        if (state.master[i].kode === id) { b = state.master[i]; break; }
+      }
+    }
+    setLoading(true);
+    var kodeBaru = b ? b.kode : '';
+    if (!b) {
+      try { kodeBaru = await generateKodeBarang(); }
+      catch(e) { toast('❌ ' + e.message, 'error'); setLoading(false); return; }
+    }
+    setLoading(false);
+    var katSel = b ? b.kategori : 'Lainnya';
+    var katOpts = '';
+    for (var k = 0; k < state.kategori.length; k++) {
+      var kk = state.kategori[k];
+      katOpts += '<option value="' + kk.nama + '" ' + (katSel === kk.nama ? 'selected' : '') + '>' + kk.nama + '</option>';
+    }
+    mc.innerHTML =
+      '<h3>' + (b ? '✏️ Edit Barang' : '➕ Tambah Barang Baru') + '</h3>' +
+      '<div class="form-group"><label>Kode Barang <span class="req">*</span></label><input id="mKode" value="' + kodeBaru + '" readonly><div class="form-hint">🔒 Auto-generate: BRG-{bulan}-{urutan}</div></div>' +
+      '<div class="form-group"><label>Nama Barang <span class="req">*</span></label><input id="mNama" value="' + (b ? b.nama : '') + '"></div>' +
+      '<div class="form-group"><label>Kategori</label><div style="display:flex;gap:8px"><select id="mKategori" style="flex:1">' + katOpts + '</select><button type="button" class="btn btn-secondary btn-sm" onclick="openKategoriModal()">🏷️</button></div><div class="form-hint">Klik 🏷️ untuk kelola kategori</div></div>' +
+      '<div class="form-group"><label>Satuan</label><input id="mSatuan" value="' + (b ? b.satuan : 'Pcs') + '"></div>' +
+      '<div class="form-group"><label>Stok Awal</label><input id="mStok" type="number" value="' + (b ? b.stok_awal : 0) + '"></div>' +
+      '<div class="form-group"><label>Harga Satuan (Rp)</label><input id="mHarga" type="number" value="' + (b ? b.harga : 0) + '"></div>' +
+      '<div class="form-group"><label>Stok Minimum</label><input id="mMin" type="number" value="' + (b ? b.min_stok : 0) + '"></div>' +
+      '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanMaster(' + (b ? 'true' : 'false') + ')">💾 Simpan</button></div>';
+  }
+  else if (type === 'masuk' || type === 'keluar') {
+    if (!canEdit()) { toast('⛔ Viewer tidak bisa input', 'error'); return; }
+    var edit = null;
+    if (id) {
+      for (var j = 0; j < state.transaksi.length; j++) {
+        if (state.transaksi[j].id === id) { edit = state.transaksi[j]; break; }
+      }
+    }
+    var today = new Date().toISOString().split('T')[0];
+    var tgl = edit ? edit.tanggal : today;
+    var kodeSel = edit ? edit.kode : (state.master[0] ? state.master[0].kode : '');
+    var jml = edit ? edit.jumlah : 1;
+    if (!state.master.length) { toast('Tambahkan barang di Master dulu!', 'error'); return; }
+    var opts = '';
+    for (var m = 0; m < state.master.length; m++) {
+      var bb = state.master[m];
+      opts += '<option value="' + bb.kode + '" ' + (bb.kode === kodeSel ? 'selected' : '') + '>' + bb.kode + ' - ' + bb.nama + ' (' + (bb.kategori || '-') + ')</option>';
+    }
+    var isEdit = !!edit;
+    var editIdJs = edit ? "'" + edit.id + "'" : 'null';
+    if (type === 'masuk') {
+      var harga = edit ? edit.harga : getBarang(kodeSel).harga;
+      mc.innerHTML =
+        '<h3>' + (isEdit ? '✏️ Edit' : '➕ Tambah') + ' Barang Masuk</h3>' +
+        '<div class="form-group"><label>Tanggal <span class="req">*</span></label><input id="tTanggal" type="date" value="' + tgl + '"></div>' +
+        '<div class="form-group"><label>Barang <span class="req">*</span></label><select id="tKode" onchange="autoHarga()">' + opts + '</select></div>' +
+        '<div class="form-group"><label>Jumlah <span class="req">*</span></label><input id="tJumlah" type="number" value="' + jml + '" min="1"></div>' +
+        '<div class="form-group"><label>Harga Satuan (Rp)</label><input id="tHarga" type="number" value="' + harga + '"></div>' +
+        '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Batal</button><button class="btn btn-success" onclick="simpanTransaksi(\'masuk\', ' + editIdJs + ')">💾 Simpan</button></div>';
+    } else {
+      var ket = edit ? (edit.keterangan || '') : '';
+      mc.innerHTML =
+        '<h3>' + (isEdit ? '✏️ Edit' : '➕ Tambah') + ' Barang Keluar</h3>' +
+        '<div class="form-group"><label>Tanggal <span class="req">*</span></label><input id="tTanggal" type="date" value="' + tgl + '"></div>' +
+        '<div class="form-group"><label>Barang <span class="req">*</span></label><select id="tKode">' + opts + '</select></div>' +
+        '<div class="form-group"><label>Jumlah <span class="req">*</span></label><input id="tJumlah" type="number" value="' + jml + '" min="1"></div>' +
+        '<div class="form-group"><label>Keterangan</label><input id="tKet" value="' + ket + '" placeholder="Divisi / Tujuan"></div>' +
+        '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Batal</button><button class="btn btn-danger" onclick="simpanTransaksi(\'keluar\', ' + editIdJs + ')">💾 Simpan</button></div>';
+    }
+  }
+  bg.classList.add('show');
+}
+
+// ============ MODAL KATEGORI ============
+function openKategoriModal() {
+  if (!isAdmin()) { toast('⛔ Hanya admin', 'error'); return; }
+  var mc = document.getElementById('modalContent');
+  var listHtml = '';
+  if (!state.kategori.length) {
+    listHtml = '<div class="empty" style="padding:20px">Belum ada kategori</div>';
+  } else {
+    for (var i = 0; i < state.kategori.length; i++) {
+      var k = state.kategori[i];
+      var dipakai = 0;
+      for (var j = 0; j < state.master.length; j++) {
+        if ((state.master[j].kategori || 'Lainnya') === k.nama) dipakai++;
+      }
+      var disabledAttr = '';
+      if (dipakai > 0) {
+        disabledAttr = 'disabled style="opacity:.4;cursor:not-allowed" title="Masih dipakai ' + dipakai + ' barang"';
+      }
+      var safeName = (k.nama || '').replace(/'/g, "\\'");
+      listHtml += '<div class="kat-row">' +
+        '<div><span class="kategori-badge" style="' + katStyle(k.nama) + '">' + k.nama + '</span>' +
+        '<span style="font-size:11px;color:#7a8899;margin-left:8px">(' + dipakai + ' barang)</span></div>' +
+        '<button class="btn btn-danger btn-icon btn-sm" onclick="hapusKategori(\'' + k.id + '\',\'' + safeName + '\')" ' + disabledAttr + '>🗑️</button>' +
+        '</div>';
+    }
+  }
+  mc.innerHTML =
+    '<h3>🏷️ Kelola Kategori</h3>' +
+    '<div class="kat-input-row">' +
+      '<input id="newKategori" placeholder="Nama kategori baru..." onkeydown="if(event.key===\'Enter\')tambahKategori()">' +
+      '<button class="btn btn-primary" onclick="tambahKategori()">➕ Tambah</button>' +
+    '</div>' +
+    '<div style="max-height:350px;overflow-y:auto">' + listHtml + '</div>' +
+    '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Tutup</button></div>';
+  document.getElementById('modalBg').classList.add('show');
+  var inp = document.getElementById('newKategori');
+  if (inp) inp.focus();
+}
+
+async function tambahKategori() {
+  var input = document.getElementById('newKategori');
+  if (!input) return;
+  var nama = input.value.trim();
+  if (!nama) { toast('Nama kategori wajib diisi', 'error'); return; }
+  for (var i = 0; i < state.kategori.length; i++) {
+    if (state.kategori[i].nama.toLowerCase() === nama.toLowerCase()) {
+      toast('❌ Kategori sudah ada!', 'error'); return;
+    }
+  }
+  setLoading(true);
+  try {
+    var res = await sb.from('kategori').insert({ nama: nama });
+    if (res.error) throw res.error;
+    await logActivity('tambah', 'kategori', nama, 'Tambah kategori: ' + nama);
+    toast('✅ Kategori ditambahkan');
+    await loadAll();
+    openKategoriModal();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+async function hapusKategori(id, nama) {
+  var dipakai = 0;
+  for (var i = 0; i < state.master.length; i++) {
+    if ((state.master[i].kategori || 'Lainnya') === nama) dipakai++;
+  }
+  if (dipakai > 0) { toast('❌ Kategori dipakai ' + dipakai + ' barang', 'error'); return; }
+  if (!confirm('Hapus kategori "' + nama + '"?')) return;
+  setLoading(true);
+  try {
+    var res = await sb.from('kategori').delete().eq('id', id);
+    if (res.error) throw res.error;
+    await logActivity('hapus', 'kategori', nama, 'Hapus kategori: ' + nama);
+    toast('🗑️ Kategori dihapus');
+    await loadAll();
+    openKategoriModal();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+// ============ MODAL USER ============
+function openUserModal(username) {
+  if (!isAdmin()) return;
+  var u = null;
+  if (username) {
+    for (var i = 0; i < state.users.length; i++) {
+      if (state.users[i].username === username) { u = state.users[i]; break; }
+    }
+  }
+  var isEdit = !!u;
+  var isMe = isEdit && u.username === currentUser.username;
+  var mc = document.getElementById('modalContent');
+  var safeEditUser = isEdit ? u.username : '';
+  mc.innerHTML =
+    '<h3>' + (isEdit ? '✏️ Edit' : '➕ Tambah') + ' User</h3>' +
+    '<div class="form-group"><label>Username <span class="req">*</span></label><input id="uUsername" value="' + (u ? u.username : '') + '" ' + (isEdit ? 'readonly' : '') + ' placeholder="huruf kecil, tanpa spasi"><div class="form-hint">Gunakan huruf kecil, angka, atau underscore</div></div>' +
+    '<div class="form-group"><label>Nama Lengkap</label><input id="uNama" value="' + (u ? (u.nama_lengkap || '') : '') + '"></div>' +
+    '<div class="form-group"><label>Password ' + (isEdit ? '<span style="color:#7a8899;font-weight:400">(kosongkan jika tidak diubah)</span>' : '<span class="req">*</span>') + '</label><input id="uPassword" type="text" placeholder="' + (isEdit ? 'Kosongkan jika tidak diubah' : 'Password baru') + '"></div>' +
+    '<div class="form-group"><label>Role <span class="req">*</span></label><select id="uRole" onchange="updateRoleDesc()" ' + (isMe ? 'disabled' : '') + '>' +
+      '<option value="viewer" ' + (u && u.role === 'viewer' ? 'selected' : '') + '>👁️ Viewer — Hanya lihat</option>' +
+      '<option value="user" ' + (u && u.role === 'user' ? 'selected' : '') + '>👤 User — Input transaksi</option>' +
+      '<option value="admin" ' + (u && u.role === 'admin' ? 'selected' : '') + '>👑 Admin — Semua akses</option>' +
+    '</select>' + (isMe ? '<div class="form-hint" style="color:#dc3545">⚠️ Tidak bisa ubah role sendiri</div>' : '') + '<div class="role-desc" id="roleDesc"></div></div>' +
+    '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="saveUser(\'' + safeEditUser + '\')">💾 Simpan</button></div>';
+  document.getElementById('modalBg').classList.add('show');
+  updateRoleDesc();
+}
+
+function updateRoleDesc() {
+  var el = document.getElementById('uRole');
+  if (!el) return;
+  var role = el.value;
+  var desc = {
+    viewer: '👁️ <b>Viewer</b> — Hanya bisa melihat data. Tidak bisa tambah, edit, atau hapus.',
+    user: '👤 <b>User</b> — Bisa lihat + tambah/edit/hapus transaksi. Tidak bisa kelola master barang atau user.',
+    admin: '👑 <b>Admin</b> — Akses penuh: semua data, master barang, kategori, user, log aktivitas.'
+  };
+  var d = document.getElementById('roleDesc');
+  if (d) d.innerHTML = desc[role] || '';
+}
+
+// ============ CRUD MASTER ============
+async function simpanMaster(isEdit) {
+  var kode = document.getElementById('mKode').value.trim();
+  var nama = document.getElementById('mNama').value.trim();
+  if (!nama) { toast('Nama barang wajib diisi!', 'error'); return; }
+  var data = {
+    kode: kode, nama: nama,
+    kategori: document.getElementById('mKategori').value || 'Lainnya',
+    satuan: document.getElementById('mSatuan').value.trim() || 'Pcs',
+    stok_awal: Number(document.getElementById('mStok').value) || 0,
+    harga: Number(document.getElementById('mHarga').value) || 0,
+    min_stok: Number(document.getElementById('mMin').value) || 0,
+    bulan_input: kode.split('-')[1] || '',
+    updated_by: currentUser.username
+  };
+  setLoading(true);
+  try {
+    var res, logKet;
+    if (isEdit) {
+      var old = null;
+      for (var i = 0; i < state.master.length; i++) {
+        if (state.master[i].kode === kode) { old = state.master[i]; break; }
+      }
+      res = await sb.from('barang').update(data).eq('kode', kode);
+      logKet = 'Edit barang: ' + nama + ' (' + kode + ') [' + data.kategori + ']';
+      if (old && old.nama !== nama) logKet += ' — nama "' + old.nama + '" → "' + nama + '"';
+      if (old && (old.kategori || 'Lainnya') !== data.kategori) logKet += ' — kategori "' + (old.kategori || 'Lainnya') + '" → "' + data.kategori + '"';
+    } else {
+      data.created_by = currentUser.username;
+      res = await sb.from('barang').insert(data);
+      logKet = 'Tambah barang: ' + nama + ' (' + kode + ') [' + data.kategori + ']';
+    }
+    if (res.error) throw res.error;
+    await logActivity(isEdit ? 'edit' : 'tambah', 'barang', kode, logKet);
+    closeModal();
+    toast(isEdit ? '✏️ Barang diupdate' : '✅ Barang ditambahkan: ' + kode);
+    await loadAll();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+function editMaster(kode) { openModal('master', kode); }
+
+async function hapusMaster(kode) {
+  if (!isAdmin()) return;
+  var b = getBarang(kode);
+  if (!confirm('Hapus barang "' + b.nama + '" (' + kode + ')?\nSemua transaksi terkait ikut terhapus.')) return;
+  setLoading(true);
+  try {
+    var res = await sb.from('barang').delete().eq('kode', kode);
+    if (res.error) throw res.error;
+    await logActivity('hapus', 'barang', kode, 'Hapus barang: ' + b.nama + ' (' + kode + ')');
+    toast('🗑️ Barang dihapus');
+    await loadAll();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+// ============ CRUD TRANSAKSI ============
+function editTransaksi(id) {
+  var t = null;
+  for (var i = 0; i < state.transaksi.length; i++) {
+    if (state.transaksi[i].id === id) { t = state.transaksi[i]; break; }
+  }
+  if (!t) return;
+  openModal(t.tipe, id);
+}
+function autoHarga() {
+  var kode = document.getElementById('tKode').value;
+  var b = getBarang(kode);
+  var el = document.getElementById('tHarga');
+  if (el) el.value = b.harga || 0;
+}
+
+async function simpanTransaksi(tipe, editId) {
+  var tanggal = document.getElementById('tTanggal').value;
+  var kode = document.getElementById('tKode').value;
+  var jumlah = Number(document.getElementById('tJumlah').value);
+  if (!tanggal || !kode || !jumlah || jumlah <= 0) { toast('Isi data dengan benar!', 'error'); return; }
+  var harga = 0, keterangan = '';
+  if (tipe === 'masuk') {
+    harga = Number(document.getElementById('tHarga').value) || 0;
+  } else {
+    keterangan = document.getElementById('tKet').value.trim();
+    if (!editId) {
+      var stok = hitungStok(kode);
+      if (jumlah > stok.akhir) {
+        if (!confirm('Stok saat ini ' + stok.akhir + ', akan menjadi minus. Lanjutkan?')) return;
+      }
+    }
+  }
+  setLoading(true);
+  try {
+    var data = { tanggal: tanggal, kode: kode, tipe: tipe, jumlah: jumlah, harga: harga, keterangan: keterangan, updated_by: currentUser.username };
+    var res;
+    if (editId) {
+      var old = null;
+      for (var i = 0; i < state.transaksi.length; i++) {
+        if (state.transaksi[i].id === editId) { old = state.transaksi[i]; break; }
+      }
+      res = await sb.from('transaksi').update(data).eq('id', editId);
+      await logActivity('edit', 'transaksi', kode, 'Edit ' + tipe + ': ' + kode + ' | ' + (old ? old.jumlah : '?') + ' → ' + jumlah + ' ' + getBarang(kode).satuan);
+    } else {
+      data.created_by = currentUser.username;
+      res = await sb.from('transaksi').insert(data);
+      await logActivity('tambah', 'transaksi', kode, 'Tambah ' + tipe + ': ' + kode + ' sebanyak ' + jumlah + ' ' + getBarang(kode).satuan);
+    }
+    if (res.error) throw res.error;
+    closeModal();
+    toast(editId ? '✏️ Transaksi diupdate' : (tipe === 'masuk' ? '✅ Barang masuk dicatat' : '✅ Barang keluar dicatat'));
+    await loadAll();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+async function hapusTransaksi(id) {
+  var t = null;
+  for (var i = 0; i < state.transaksi.length; i++) {
+    if (state.transaksi[i].id === id) { t = state.transaksi[i]; break; }
+  }
+  if (!t) return;
+  if (!confirm('Hapus transaksi ' + t.tipe + ' "' + t.kode + '" sebanyak ' + t.jumlah + '?')) return;
+  setLoading(true);
+  try {
+    var res = await sb.from('transaksi').delete().eq('id', id);
+    if (res.error) throw res.error;
+    await logActivity('hapus', 'transaksi', t.kode, 'Hapus transaksi ' + t.tipe + ': ' + t.kode + ' sebanyak ' + t.jumlah);
+    toast('🗑️ Transaksi dihapus');
+    await loadAll();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+// ============ CRUD USER ============
+async function saveUser(editUsername) {
+  if (!isAdmin()) return;
+  var username = document.getElementById('uUsername').value.trim().toLowerCase();
+  var nama = document.getElementById('uNama').value.trim();
+  var password = document.getElementById('uPassword').value;
+  var role = document.getElementById('uRole').value;
+  if (!username) { toast('Username wajib diisi!', 'error'); return; }
+  if (!/^[a-z0-9_]+$/.test(username)) { toast('Username hanya huruf kecil, angka, underscore', 'error'); return; }
+  if (!editUsername && !password) { toast('Password wajib untuk user baru!', 'error'); return; }
+  if (editUsername) {
+    var old = null, adminCount = 0;
+    for (var i = 0; i < state.users.length; i++) {
+      if (state.users[i].username === editUsername) old = state.users[i];
+      if (state.users[i].role === 'admin') adminCount++;
+    }
+    if (old && old.role === 'admin' && role !== 'admin' && adminCount === 1) { toast('❌ Tidak bisa demote admin terakhir!', 'error'); return; }
+    if (editUsername === currentUser.username && role !== 'admin') { toast('❌ Tidak bisa ubah role sendiri!', 'error'); return; }
+  }
+  setLoading(true);
+  try {
+    var res;
+    if (editUsername) {
+      var data = { nama_lengkap: nama, role: role };
+      if (password) data.password = password;
+      res = await sb.from('users').update(data).eq('username', editUsername);
+      var logKet = 'Edit user: ' + editUsername + ' → ' + role;
+      if (password) logKet += ' (password diubah)';
+      await logActivity('edit', 'users', editUsername, logKet);
+    } else {
+      var exist = false;
+      for (var j = 0; j < state.users.length; j++) {
+        if (state.users[j].username === username) { exist = true; break; }
+      }
+      if (exist) { toast('❌ Username sudah dipakai!', 'error'); setLoading(false); return; }
+      res = await sb.from('users').insert({ username: username, password: password, nama_lengkap: nama, role: role });
+      await logActivity('tambah', 'users', username, 'Tambah user: ' + username + ' (' + role + ')');
+    }
+    if (res.error) throw res.error;
+    closeModal();
+    toast(editUsername ? '✏️ User diupdate' : '✅ User ditambahkan');
+    await loadUsers();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+async function deleteUser(username) {
+  if (!isAdmin()) return;
+  if (username === currentUser.username) { toast('❌ Tidak bisa hapus diri sendiri!', 'error'); return; }
+  var u = null, adminCount = 0;
+  for (var i = 0; i < state.users.length; i++) {
+    if (state.users[i].username === username) u = state.users[i];
+    if (state.users[i].role === 'admin') adminCount++;
+  }
+  if (u && u.role === 'admin' && adminCount === 1) { toast('❌ Tidak bisa hapus admin terakhir!', 'error'); return; }
+  if (!confirm('Hapus user "' + username + '"?')) return;
+  setLoading(true);
+  try {
+    var res = await sb.from('users').delete().eq('username', username);
+    if (res.error) throw res.error;
+    await logActivity('hapus', 'users', username, 'Hapus user: ' + username);
+    toast('🗑️ User dihapus');
+    await loadUsers();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+  finally { setLoading(false); }
+}
+
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+
+// ============ EXPORT EXCEL ============
+function exportExcel() {
+  var wb = XLSX.utils.book_new();
+  var master = [['Kode','Nama Barang','Kategori','Satuan','Stok Awal','Harga Satuan','Stok Minimum','Bulan Input','Dibuat Oleh']];
+  for (var i = 0; i < state.master.length; i++) {
+    var b = state.master[i];
+    master.push([b.kode, b.nama, b.kategori || 'Lainnya', b.satuan, b.stok_awal, b.harga, b.min_stok, b.bulan_input || '', b.created_by || '']);
+  }
+  var ws1 = XLSX.utils.aoa_to_sheet(master);
+  ws1['!cols'] = [{wch:12},{wch:28},{wch:15},{wch:10},{wch:12},{wch:15},{wch:15},{wch:12},{wch:15}];
+
+  var masuk = [['Tanggal','Kode','Nama Barang','Kategori','Jumlah','Harga','Total','Oleh']];
+  for (var j = 0; j < state.transaksi.length; j++) {
+    var t = state.transaksi[j];
+    if (t.tipe === 'masuk') {
+      var bb = getBarang(t.kode);
+      masuk.push([fmtTgl(t.tanggal), t.kode, bb.nama, bb.kategori || 'Lainnya', t.jumlah, t.harga, t.jumlah * t.harga, t.created_by || '']);
+    }
+  }
+  var ws2 = XLSX.utils.aoa_to_sheet(masuk);
+  ws2['!cols'] = [{wch:12},{wch:12},{wch:28},{wch:15},{wch:10},{wch:15},{wch:15},{wch:15}];
+
+  var keluar = [['Tanggal','Kode','Nama Barang','Kategori','Jumlah','Keterangan','Oleh']];
+  for (var k = 0; k < state.transaksi.length; k++) {
+    var tk = state.transaksi[k];
+    if (tk.tipe === 'keluar') {
+      var bk = getBarang(tk.kode);
+      keluar.push([fmtTgl(tk.tanggal), tk.kode, bk.nama, bk.kategori || 'Lainnya', tk.jumlah, tk.keterangan || '', tk.created_by || '']);
+    }
+  }
+  var ws3 = XLSX.utils.aoa_to_sheet(keluar);
+  ws3['!cols'] = [{wch:12},{wch:12},{wch:28},{wch:15},{wch:10},{wch:25},{wch:15}];
+
+  var lap = [['Kode','Nama','Kategori','Satuan','Stok Awal','Masuk','Keluar','Stok Akhir','Status','Nilai Stok']];
+  var totalNilai = 0;
+  for (var m = 0; m < state.master.length; m++) {
+    var bm = state.master[m];
+    var h = hitungStok(bm.kode);
+    lap.push([bm.kode, bm.nama, bm.kategori || 'Lainnya', bm.satuan, bm.stok_awal, h.masuk, h.keluar, h.akhir, h.status, h.nilai]);
+    totalNilai += h.nilai;
+  }
+  lap.push(['','','','','','','','','TOTAL', totalNilai]);
+  var ws4 = XLSX.utils.aoa_to_sheet(lap);
+  ws4['!cols'] = [{wch:12},{wch:28},{wch:15},{wch:10},{wch:12},{wch:10},{wch:10},{wch:12},{wch:12},{wch:18}];
+
+  XLSX.utils.book_append_sheet(wb, ws1, 'Master');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Masuk');
+  XLSX.utils.book_append_sheet(wb, ws3, 'Keluar');
+  XLSX.utils.book_append_sheet(wb, ws4, 'Laporan');
+
+  if (isAdmin() && state.users.length) {
+    var users = [['Username','Nama Lengkap','Role','Dibuat']];
+    for (var n = 0; n < state.users.length; n++) {
+      var u = state.users[n];
+      users.push([u.username, u.nama_lengkap || '', u.role, fmtTgl(u.created_at)]);
+    }
+    var ws5 = XLSX.utils.aoa_to_sheet(users);
+    ws5['!cols'] = [{wch:15},{wch:25},{wch:12},{wch:15}];
+    XLSX.utils.book_append_sheet(wb, ws5, 'User');
+  }
+
+  var tgl = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, 'Laporan_Stok_' + tgl + '.xlsx');
+  toast('📥 File Excel terunduh');
+}
+
+// ============ START ============
+if (sb) {
+  checkSession().catch(function(e) {
+    console.error('Session error:', e);
+  });
+} else {
+  console.error('❌ Tidak bisa memulai: Supabase client belum siap');
+}
+</script>
+</body>
+</html>
